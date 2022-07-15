@@ -13,6 +13,8 @@ import cv2
 import numpy as np
 from PIL import Image
 from cv2 import VideoWriter_fourcc
+from moviepy.audio.io.AudioFileClip import AudioFileClip
+from moviepy.video.io.VideoFileClip import VideoFileClip
 
 
 class Video2Sumiao:
@@ -21,9 +23,11 @@ class Video2Sumiao:
         last_index = self.video_file.rfind('/')
         self.root_path = self.video_file[0:last_index]
         self.tmp_file = self.root_path + '/tmp'
-        self.res_video_file = self.root_path + '/res.avi'
+        self.tmp_video_file = self.tmp_file + '/tmp.mp4'
+        self.res_video_file = self.root_path + '/res.mp4'
         self.ori_dir = self.tmp_file + '/ori_pics'
         self.sumiao_dir = self.tmp_file + '/sumiao_pics'
+        self.tmp_audio_file = self.tmp_file + '/audio.mp3'
         self.fps = 0
         self.width = 0
         self.height = 0
@@ -70,6 +74,8 @@ class Video2Sumiao:
                 self.__calc3__(infile, outfile)
             elif calc_opt == 4:
                 self.__calc4__(infile, outfile)
+            elif calc_opt == 5:
+                self.__calc5__(infile, outfile)
 
     def __calc1__(self, infile, outfile):
         img = cv2.imread(infile, cv2.IMREAD_GRAYSCALE)
@@ -138,9 +144,16 @@ class Video2Sumiao:
         img_cartoon = cv2.bitwise_and(img_color, img_edge)
         cv2.imwrite(outfile, img_cartoon)
 
+    '''
+    参考：https://blog.csdn.net/weixin_39765695/article/details/111675867
+    '''
+    def __calc5__(self, infile, outfile):
+        im = cv2.imread('input-image.jpg')
+        rows, cols = im.shape[:2]  # 创建高斯滤波器kernel_x = cv2.getGaussianKernel(cols,200)kernel_y = cv2.getGaussianKernel(rows,200)kernel = kernel_y * kernel_x.Tfilter = 255 * kernel / np.linalg.norm(kernel)vintage_im = np.copy(im)# 对于输入图像中的每个通道，我们将应用上述滤波器for i in range(3):    vintage_im[:,:,i] = vintage_im[:,:,i] * filterplt.imshow(vintage_im)plt.show()
+
     def to_video(self):
-        fourcc = VideoWriter_fourcc(*'MJPG')  # 支持jpg
-        videoWriter = cv2.VideoWriter(self.res_video_file, fourcc, fps, (width, height))
+        fourcc = VideoWriter_fourcc(*'mp4v')
+        videoWriter = cv2.VideoWriter(self.tmp_video_file, fourcc, fps, (width, height))
         im_names = os.listdir(self.sumiao_dir)
         print(len(im_names))
         for im_name in range(len(im_names) - 2):
@@ -169,10 +182,23 @@ class Video2Sumiao:
         with open('img.txt', mode='w') as f:
             f.write(result)
 
+    def get_audio_file(self):
+        video = VideoFileClip(self.video_file)
+        audio = video.audio
+        audio.write_audiofile(self.tmp_audio_file)
+
+    def add_audio(self):
+        video_clip = VideoFileClip(self.tmp_video_file)
+        audio_clip = AudioFileClip(self.tmp_audio_file)
+        video_clip2 = video_clip.set_audio(audio_clip)
+        video_clip2.write_videofile(self.res_video_file)
+
     def transVideo(self):
+        self.get_audio_file()
         self.video_to_pics()
-        self.to_sumiao(1)
+        self.to_sumiao(5)
         self.to_video()
+        self.add_audio()
         shutil.rmtree(self.tmp_file)
 
 
